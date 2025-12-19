@@ -221,6 +221,42 @@ const confirmMove = async () => {
     return;
   }
 
+  if (selectedIds.value.has(targetParentId.value!)) {
+    message.text = '不可將電表移動到自身';
+    message.status = 'warning';
+    openMessageModal();
+    return;
+  }
+
+  const isDescendantOfSelected = (targetId: number | null | undefined) => {
+    if (targetId === null || targetId === undefined) return false;
+    const parentMap = new Map<number, number | null>();
+
+    const build = (nodes: MeterNode[]) => {
+      for (const node of nodes) {
+        parentMap.set(node.id, node.parent_id ?? null);
+        if (node.children && node.children.length) build(node.children);
+      }
+    };
+
+    build(treeData.value);
+
+    let cur: number | null | undefined = targetId;
+    while (cur != null) {
+      if (selectedIds.value.has(cur)) return true;
+      cur = parentMap.get(cur) ?? null;
+    }
+
+    return false;
+  };
+
+  if (isDescendantOfSelected(targetParentId.value)) {
+    message.text = '不可將電表移動到其子孫節點底下';
+    message.status = 'warning';
+    openMessageModal();
+    return;
+  }
+
   try {
     const nodeIds = Array.from(selectedIds.value);
 
